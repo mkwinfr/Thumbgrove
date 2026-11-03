@@ -57,7 +57,7 @@ function setUpModel(): string {
 }
 
 beforeEach(() => {
-  base = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'thumbgrove-features-')))
+  base = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'thumbgrove-features-')))
   index = path.join(base, 'Index')
   fs.mkdirSync(index)
   scanned = []

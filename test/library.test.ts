@@ -34,7 +34,7 @@ function folderId(relative: string): number {
 }
 
 beforeEach(() => {
-  base = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'thumbgrove-test-')))
+  base = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'thumbgrove-test-')))
   watched = path.join(base, 'watched')
   fs.mkdirSync(watched)
   library = new Library(path.join(base, 'library.db'), DEFAULTS)

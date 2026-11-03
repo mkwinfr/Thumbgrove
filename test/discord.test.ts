@@ -140,7 +140,7 @@ function setUp(): void {
 }
 
 beforeEach(async () => {
-  base = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'thumbgrove-discord-')))
+  base = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'thumbgrove-discord-')))
   index = path.join(base, 'Index')
   fs.mkdirSync(index)
   fake = new FakeDiscord()

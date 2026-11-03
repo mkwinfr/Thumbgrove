@@ -37,7 +37,7 @@ async function watch(root = index): Promise<void> {
 }
 
 beforeEach(() => {
-  base = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'thumbgrove-folder-')))
+  base = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'thumbgrove-folder-')))
   index = path.join(base, 'Index')
   other = path.join(base, 'Other')
   fs.mkdirSync(index)

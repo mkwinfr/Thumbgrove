@@ -35,7 +35,7 @@ async function watch(): Promise<void> {
 }
 
 beforeEach(() => {
-  base = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'thumbgrove-organize-')))
+  base = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'thumbgrove-organize-')))
   index = path.join(base, 'Index')
   fs.mkdirSync(index)
   service = new LibraryService(

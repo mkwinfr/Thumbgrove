@@ -87,7 +87,7 @@ function setUpModel(): string {
 }
 
 beforeEach(async () => {
-  base = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'thumbgrove-review-')))
+  base = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'thumbgrove-review-')))
   index = path.join(base, 'Index')
   inbox = path.join(index, 'Inbox')
   fs.mkdirSync(inbox, { recursive: true })

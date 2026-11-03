@@ -1,0 +1,83 @@
+{
+  "name": "thumb-grove",
+  "productName": "Thumb Grove",
+  "version": "0.3.0",
+  "description": "Your images. Neatly Rooted. A watched-folder image manager for sorting characters and sets and posting them to Discord",
+  "author": "mkwinfr",
+  "private": true,
+  "type": "module",
+  "main": "out/main/index.js",
+  "scripts": {
+    "postinstall": "node node_modules/electron/install.js",
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "dist": "electron-vite build && electron-builder --win --x64"
+  },
+  "dependencies": {
+    "onnxruntime-node": "^1.31.1",
+    "sharp": "^0.35.5"
+  },
+  "devDependencies": {
+    "@fontsource-variable/outfit": "^5.3.0",
+    "@tanstack/react-virtual": "^3.14.25",
+    "@types/node": "^26.6.6",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.2",
+    "electron": "^45.2.1",
+    "electron-builder": "^26.18.0",
+    "electron-vite": "^6.0.0",
+    "lucide-react": "^1.66.0",
+    "motion": "^14.9.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.5",
+    "vitest": "^5.0.5",
+    "zustand": "^5.0.16"
+  },
+  "build": {
+    "appId": "com.thumbgrove.app",
+    "productName": "Thumb Grove",
+    "electronDist": "node_modules/electron/dist",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "out/**/*",
+      "package.json",
+      "!node_modules/onnxruntime-node/bin/napi-v6/{darwin,linux}/**",
+      "!node_modules/onnxruntime-node/bin/napi-v6/win32/arm64/**"
+    ],
+    "asarUnpack": [
+      "node_modules/sharp/**/*",
+      "node_modules/@img/**/*",
+      "node_modules/onnxruntime-node/**/*"
+    ],
+    "win": {
+      "target": [
+        "nsis",
+        "portable",
+        "dir"
+      ],
+      "icon": "build/icon.png",
+      "signExecutable": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "deleteAppDataOnUninstall": true,
+      "artifactName": "Thumb-Grove-Setup-${version}.exe",
+      "installerSidebar": "build/installerSidebar.bmp"
+    },
+    "portable": {
+      "artifactName": "Thumb-Grove-${version}.exe"
+    }
+  }
+}

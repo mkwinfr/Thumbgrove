@@ -1,0 +1,60 @@
+import { useEffect, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
+import { AnimatePresence, motion } from 'motion/react'
+import { X } from 'lucide-react'
+
+interface DialogProps {
+  open: boolean
+  title: string
+  onClose(): void
+  children: ReactNode
+}
+
+export function Dialog({ open, title, onClose, children }: DialogProps) {
+  useEffect(() => {
+    if (!open) return
+    const onKey = (event: KeyboardEvent): void => {
+      if (event.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [open, onClose])
+
+  // Rendered at the top of the page so that it always covers the whole window.
+  return createPortal(
+    <AnimatePresence>
+      {open && (
+        <motion.div
+          className="dialog-backdrop"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.16 }}
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) onClose()
+          }}
+        >
+          <motion.section
+            role="dialog"
+            aria-modal="true"
+            aria-label={title}
+            className="dialog"
+            initial={{ opacity: 0, y: 14, scale: 0.97, filter: 'blur(6px)' }}
+            animate={{ opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }}
+            exit={{ opacity: 0, y: 8, scale: 0.98 }}
+            transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+          >
+            <header className="dialog-header">
+              <h2>{title}</h2>
+              <button className="icon-button" aria-label="Close" onClick={onClose}>
+                <X size={18} />
+              </button>
+            </header>
+            {children}
+          </motion.section>
+        </motion.div>
+      )}
+    </AnimatePresence>,
+    document.body
+  )
+}

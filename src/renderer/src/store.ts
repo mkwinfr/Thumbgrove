@@ -31,6 +31,7 @@ export interface Flight {
 interface AppState {
   view: ViewName
   settings: Settings
+  settingsOpen: boolean
   settingsSection: SettingsSection
   modelDialogOpen: boolean
   reviewFilter: ReviewFilter
@@ -60,6 +61,7 @@ interface AppState {
   recognition: RecognitionStatus | null
 
   setView(view: ViewName): void
+  setSettingsOpen(open: boolean): void
   setSettingsSection(section: SettingsSection): void
   openSettings(section: SettingsSection): void
   setModelDialogOpen(open: boolean): void
@@ -245,7 +247,7 @@ export const useAppStore = create<AppState>((set, get) => {
       pushToast('The recognition model is ready. Choose Scan folder to begin.')
     } else if (status.phase === 'complete') {
       const auto = status.autoApproved ? `, ${status.autoApproved} auto-approved` : ''
-      pushToast(`Scanned ${status.done} ${status.done === 1 ? 'image' : 'images'}${auto}`, status.autoApproved ? { action: { label: 'See them', run: () => set({ view: 'review', autoApprovedOpen: true }) } } : {})
+      pushToast(`Scanned ${status.done} ${status.done === 1 ? 'image' : 'images'}${auto}`, status.autoApproved ? { action: { label: 'See them', run: () => set({ view: 'review', settingsOpen: false, autoApprovedOpen: true }) } } : {})
     } else if (status.phase === 'error' && status.error) {
       pushToast(status.error, { tone: 'error' })
     }
@@ -282,6 +284,7 @@ export const useAppStore = create<AppState>((set, get) => {
       checkBeforeUpload: true,
       learnCorrections: true
     },
+    settingsOpen: false,
     settingsSection: 'folders',
     modelDialogOpen: false,
     reviewFilter: 'all',
@@ -309,8 +312,9 @@ export const useAppStore = create<AppState>((set, get) => {
     recognition: null,
 
     setView: (view) => set({ view }),
+    setSettingsOpen: (settingsOpen) => set({ settingsOpen }),
     setSettingsSection: (settingsSection) => set({ settingsSection }),
-    openSettings: (settingsSection) => set({ view: 'settings', settingsSection }),
+    openSettings: (settingsSection) => set({ settingsOpen: true, settingsSection }),
     setModelDialogOpen: (modelDialogOpen) => set({ modelDialogOpen }),
     setAutoApprovedOpen: (autoApprovedOpen) => set({ autoApprovedOpen }),
     updateSettings: async (change) => {

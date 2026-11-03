@@ -12,7 +12,7 @@ import { FoldersView } from './features/folders/FoldersView'
 import { AutoApprovedDialog } from './features/review/AutoApprovedDialog'
 import { CharacterNameDialog } from './features/review/CharacterNameDialog'
 import { ReviewView } from './features/review/ReviewView'
-import { SettingsView } from './features/settings/SettingsView'
+import { SettingsDialog } from './features/settings/SettingsView'
 import type { ViewName } from './types'
 
 const VIEWS: Record<ViewName, ComponentType> = {
@@ -20,8 +20,7 @@ const VIEWS: Record<ViewName, ComponentType> = {
   review: ReviewView,
   characters: CharactersView,
   discord: DiscordView,
-  catalogues: CataloguesView,
-  settings: SettingsView
+  catalogues: CataloguesView
 }
 
 export function App() {
@@ -49,6 +48,7 @@ export function App() {
       </main>
       <Flights />
       <Toasts />
+      <SettingsDialog />
       <ModelDialog />
       <CharacterNameDialog />
       <AutoApprovedDialog />

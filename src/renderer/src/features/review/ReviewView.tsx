@@ -16,7 +16,8 @@ function useReviewShortcuts(): void {
   useEffect(() => {
     const onKey = (event: KeyboardEvent): void => {
       const store = useAppStore.getState()
-      if (store.editingCharacter || store.view !== 'review') return
+      // A dialog over Review handles its own keys.
+      if (store.editingCharacter || store.view !== 'review' || document.querySelector('.dialog')) return
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z') {
         event.preventDefault()
         void store.undo()

@@ -1,8 +1,9 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import { motion } from 'motion/react'
 import { AlertTriangle, EyeOff, FolderTree, Info, ScanSearch, Send, X, type LucideIcon } from 'lucide-react'
 import type { AppInfo, Correction, Settings } from '../../../../shared/api'
 import { displayName } from '../../../../shared/naming'
+import { Dialog } from '../../components/Dialog'
 import { FolderPicker } from '../../components/FolderPicker'
 import { Toggle } from '../../components/Toggle'
 import logo from '../../assets/logo.png'
@@ -370,30 +371,28 @@ function DiscordSection() {
   )
 }
 
-export function SettingsView() {
+export function SettingsDialog() {
+  const open = useAppStore((s) => s.settingsOpen)
+  const setOpen = useAppStore((s) => s.setSettingsOpen)
   const section = useAppStore((s) => s.settingsSection)
   const setSection = useAppStore((s) => s.setSettingsSection)
+  const close = useCallback(() => setOpen(false), [setOpen])
   return (
-    <div className="browse">
-      <header className="review-header browse-header">
-        <div className="browse-title">
-          <h1>Settings</h1>
-          <div className="tabs" role="tablist" aria-label="Settings sections">
-            {SECTIONS.map(({ id, label, icon: Icon }) => (
-              <button key={id} role="tab" aria-selected={section === id} onClick={() => setSection(id)}>
-                {section === id && <motion.span layoutId="settings-tab" className="tab-active" transition={{ type: 'spring', stiffness: 460, damping: 36 }} />}
-                <Icon size={15} />
-                <span>{label}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-      </header>
+    <Dialog open={open} title="Settings" onClose={close} className="settings-dialog">
+      <div className="tabs" role="tablist" aria-label="Settings sections">
+        {SECTIONS.map(({ id, label, icon: Icon }) => (
+          <button key={id} role="tab" aria-selected={section === id} onClick={() => setSection(id)}>
+            {section === id && <motion.span layoutId="settings-tab" className="tab-active" transition={{ type: 'spring', stiffness: 460, damping: 36 }} />}
+            <Icon size={15} />
+            <span>{label}</span>
+          </button>
+        ))}
+      </div>
       <div className="settings-page">
         <div className="settings-column">
           {section === 'folders' ? <FoldersSection /> : section === 'review' ? <ReviewSection /> : section === 'discord' ? <DiscordSection /> : <AboutSection />}
         </div>
       </div>
-    </div>
+    </Dialog>
   )
 }

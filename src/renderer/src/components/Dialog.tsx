@@ -1,4 +1,4 @@
-import { useEffect, type ReactNode } from 'react'
+import { useEffect, useRef, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { AnimatePresence, motion } from 'motion/react'
 import { X } from 'lucide-react'
@@ -8,13 +8,17 @@ interface DialogProps {
   title: string
   onClose(): void
   children: ReactNode
+  className?: string
 }
 
-export function Dialog({ open, title, onClose, children }: DialogProps) {
+export function Dialog({ open, title, onClose, children, className }: DialogProps) {
+  const backdrop = useRef<HTMLDivElement>(null)
+
   useEffect(() => {
     if (!open) return
     const onKey = (event: KeyboardEvent): void => {
-      if (event.key === 'Escape') onClose()
+      // Esc closes only the top dialog when one has opened over another.
+      if (event.key === 'Escape' && backdrop.current === [...document.querySelectorAll('.dialog-backdrop')].at(-1)) onClose()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
@@ -25,6 +29,7 @@ export function Dialog({ open, title, onClose, children }: DialogProps) {
     <AnimatePresence>
       {open && (
         <motion.div
+          ref={backdrop}
           className="dialog-backdrop"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -38,7 +43,7 @@ export function Dialog({ open, title, onClose, children }: DialogProps) {
             role="dialog"
             aria-modal="true"
             aria-label={title}
-            className="dialog"
+            className={`dialog${className ? ` ${className}` : ''}`}
             initial={{ opacity: 0, y: 14, scale: 0.97, filter: 'blur(6px)' }}
             animate={{ opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }}
             exit={{ opacity: 0, y: 8, scale: 0.98 }}

@@ -15,6 +15,7 @@ const ITEMS: Array<{ view: ViewName; label: string; icon: LucideIcon }> = [
 export function Rail() {
   const view = useAppStore((s) => s.view)
   const setView = useAppStore((s) => s.setView)
+  const setSettingsOpen = useAppStore((s) => s.setSettingsOpen)
   const reviewCount = useAppStore((s) => s.queue.length)
   const discordCount = useAppStore((s) => s.discordQueued)
   const counts: Partial<Record<ViewName, number>> = { review: reviewCount, discord: discordCount }
@@ -64,8 +65,7 @@ export function Rail() {
           )
         })}
       </div>
-      <button id="nav-settings" className={`rail-item rail-settings${view === 'settings' ? ' active' : ''}`} aria-current={view === 'settings' ? 'page' : undefined} onClick={() => setView('settings')}>
-        {view === 'settings' && <motion.span layoutId="rail-active" className="rail-active" transition={{ type: 'spring', stiffness: 420, damping: 34 }} />}
+      <button id="nav-settings" className="rail-item rail-settings" aria-haspopup="dialog" onClick={() => setSettingsOpen(true)}>
         <span className="rail-icon">
           <Settings size={20} strokeWidth={1.8} />
         </span>

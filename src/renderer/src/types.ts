@@ -2,7 +2,7 @@ import type { ReviewRecord } from '../../shared/api'
 
 export type { Candidate, Draft } from '../../shared/api'
 
-export type ViewName = 'folders' | 'review' | 'characters' | 'discord' | 'catalogues' | 'settings'
+export type ViewName = 'folders' | 'review' | 'characters' | 'discord' | 'catalogues'
 
 export type ReviewItem = ReviewRecord
 

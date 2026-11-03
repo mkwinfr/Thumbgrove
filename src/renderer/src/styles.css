@@ -2357,8 +2357,27 @@ button.tile:hover {
 }
 
 .settings-column {
-  max-width: 780px;
-  padding-bottom: 24px;
+  padding-bottom: 8px;
+}
+
+.dialog-backdrop:has(> .settings-dialog) {
+  background: rgba(6, 6, 10, 0.46);
+  backdrop-filter: blur(16px);
+}
+
+.dialog.settings-dialog {
+  display: flex;
+  flex-direction: column;
+  width: min(880px, calc(100vw - 48px));
+  height: min(760px, calc(100vh - 64px));
+  max-height: none;
+  overflow: hidden;
+}
+
+.settings-dialog > .tabs {
+  flex: none;
+  align-self: flex-start;
+  margin-bottom: 16px;
 }
 
 .setting-slider {

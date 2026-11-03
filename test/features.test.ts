@@ -39,6 +39,14 @@ const idOf = (relative: string): number => service.library.imageIdAtPath(path.jo
 const folder = (relative: string) => service.library.getFolderByPath(path.join(index, relative))
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
+async function until(condition: () => boolean): Promise<void> {
+  for (let i = 0; i < 1000 && !condition(); i++) await wait(5)
+  if (!condition()) throw new Error('It did not happen in time.')
+}
+
+/** Waits for the scan that was just started, including its auto-approvals. */
+const scanDone = (): Promise<void> => until(() => ['complete', 'error', 'cancelled'].includes(service.recognition.status().phase))
+
 async function watch(): Promise<void> {
   service.addRoot(index)
   await service.idle()
@@ -142,7 +150,7 @@ describe('auto-approve history', () => {
     const original = runnerScore.value
     runnerScore.value = score
     service.startRecognition({ folderId: folder('Inbox')!.id, includeSubfolders: false, force: false })
-    await wait(40)
+    await scanDone()
     await service.idle()
     runnerScore.value = original
   }
@@ -334,7 +342,7 @@ describe('learning from corrections', () => {
     service.library.setSetting('autoApprove', true)
     runnerScore.value = 0.99
     service.startRecognition({ folderId: folder('Inbox')!.id, includeSubfolders: false, force: false })
-    await wait(30)
+    await scanDone()
     runnerScore.value = 0.5
     expect(fs.existsSync(path.join(index, 'Inbox/c.png'))).toBe(true)
     expect(service.reviews.list()[0]!.candidates[0]).toMatchObject({ tag: 'Right', learnedFrom: 'fern (x)' })
@@ -349,7 +357,7 @@ describe('learning from corrections', () => {
     await apply(await review('b.png', 'fern (x)'), ['Right'], null, 'R2.png')
     service.updateSettings({ learnCorrections: false })
     service.startRecognition({ folderId: folder('Inbox')!.id, includeSubfolders: false, force: false })
-    await wait(30)
+    await scanDone()
     expect(service.reviews.list()[0]!.candidates[0]).toMatchObject({ tag: 'fern (x)' })
   })
 })
@@ -433,7 +441,7 @@ describe('settings', () => {
     await watch()
     service.updateSettings({ autoApprove: true, autoApproveThreshold: 0.5 })
     service.startRecognition({ folderId: folder('Inbox')!.id, includeSubfolders: false, force: false })
-    await wait(30)
+    await scanDone()
     await service.idle()
     expect(fs.existsSync(path.join(index, 'Characters/Fern/Fern - X - 001.png'))).toBe(true)
   })
@@ -458,7 +466,7 @@ describe('automatic scanning', () => {
     write('Other/b.png')
     await watch()
     service.updateSettings({ autoScanEnabled: true, autoScanFolder: path.join(index, 'Drop') })
-    await wait(30)
+    await until(() => scanned.length === 1)
     expect(scanned).toEqual([['a.png']])
 
     write('Other/c.png')
@@ -477,10 +485,10 @@ describe('automatic scanning', () => {
     write('Two/Sub/c.png')
     await watch()
     service.updateSettings({ autoScanEnabled: true, autoScanFolder: path.join(index, 'Two') })
-    await wait(30)
+    await until(() => scanned.length === 1)
     expect(scanned.flat()).toEqual(['b.png'])
     service.updateSettings({ autoScanSubfolders: true })
-    await wait(30)
+    await until(() => scanned.length === 2)
     expect(scanned.flat()).toEqual(['b.png', 'c.png'])
   })
 
@@ -488,7 +496,8 @@ describe('automatic scanning', () => {
     write('Drop/a.png')
     await watch()
     service.updateSettings({ autoScanEnabled: true, autoScanFolder: path.join(index, 'Drop') })
-    await wait(30)
+    await until(() => scanned.length === 1)
+    await scanDone()
     service.clearReviews()
     service.updateSettings({ autoScanSubfolders: false })
     await wait(30)

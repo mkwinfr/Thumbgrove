@@ -2029,6 +2029,19 @@ button.tile:hover {
   font-weight: 600;
 }
 
+.queue-posted {
+  position: absolute;
+  bottom: 4px;
+  left: 4px;
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--teal);
+  color: #06201a;
+}
+
 .queue-remove {
   position: absolute;
   top: 4px;
@@ -2048,18 +2061,6 @@ button.tile:hover {
   opacity: 1;
 }
 
-.queue-posted {
-  position: absolute;
-  bottom: 4px;
-  left: 4px;
-  display: grid;
-  place-items: center;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: var(--teal);
-  color: #06201a;
-}
 
 .thread-columns {
   display: grid;

@@ -29,7 +29,7 @@ interface DiscordState {
   refreshStatus(): Promise<void>
   setTab(tab: DiscordTab): void
   setConnect(request: ConnectRequest | null): void
-  startUpload(ids: number[]): Promise<void>
+  startUpload(ids: number[], threadId?: string): Promise<void>
   removeFromQueue(ids: number[]): Promise<void>
   toggleSelected(id: number): void
   selectMany(ids: number[]): void
@@ -103,9 +103,9 @@ export const useDiscordStore = create<DiscordState>((set, get) => {
     setTab: (tab) => set({ tab }),
     setConnect: (connect) => set({ connect }),
 
-    startUpload: async (ids) => {
+    startUpload: async (ids, threadId) => {
       try {
-        await window.thumbGrove.startDiscordUpload(ids)
+        await window.thumbGrove.startDiscordUpload(ids, threadId)
       } catch (error) {
         notify(errorMessage(error), 'error')
       }

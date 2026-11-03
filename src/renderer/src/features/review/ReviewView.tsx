@@ -49,7 +49,7 @@ function useReviewShortcuts(): void {
           break
         case 'Enter':
           // A focused button handles Enter itself.
-          if (!(event.target instanceof HTMLButtonElement)) void store.apply()
+          if (!(event.target instanceof HTMLButtonElement)) void store.apply(event.shiftKey)
           break
         case 's':
         case 'S':

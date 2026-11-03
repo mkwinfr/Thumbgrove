@@ -118,7 +118,7 @@ async function watchIndex(): Promise<void> {
 }
 
 describe('applying a review', () => {
-  it('moves the image into its character folder and queues it for Discord', async () => {
+  it('moves the image into its character folder without queueing it for Discord', async () => {
     write('Inbox/a.png', 'original bytes')
     await watchIndex()
     const id = idOf('Inbox/a.png')
@@ -129,6 +129,13 @@ describe('applying a review', () => {
     expect(tree()).toEqual(['Characters/Fern/Fern - 001.png'])
     expect(fs.readFileSync(path.join(index, 'Characters/Fern/Fern - 001.png'), 'utf8')).toBe('original bytes')
     expect(idOf('Characters/Fern/Fern - 001.png')).toBe(id)
+    expect(service.reviews.discordCount()).toBe(0)
+  })
+
+  it('queues the image for Discord when asked', async () => {
+    write('Inbox/a.png')
+    await watchIndex()
+    await service.applyReviews([request(idOf('Inbox/a.png'), { queueForDiscord: true })])
     expect(service.reviews.discordCount()).toBe(1)
   })
 
@@ -137,7 +144,7 @@ describe('applying a review', () => {
     await watchIndex()
     await service.applyReviews([request(idOf('Inbox/a.png'), { setName: 'Beach Day', placeInSet: true })])
     expect(tree()).toEqual(['Characters/Fern/Fern - 001.png', 'Sets/Beach Day/Fern - 001.png'])
-    expect(service.reviews.discordCount()).toBe(1)
+    expect(service.reviews.discordCount()).toBe(0)
   })
 
   it('copies an image with several characters into each of their folders', async () => {
@@ -247,7 +254,8 @@ describe('undo', () => {
     const id = idOf('Inbox/a.png')
     const before = service.reviews.list()
 
-    const { undoToken } = await service.applyReviews([request(id, { setName: 'Beach Day', placeInSet: true })])
+    const { undoToken } = await service.applyReviews([request(id, { setName: 'Beach Day', placeInSet: true, queueForDiscord: true })])
+    expect(service.reviews.discordCount()).toBe(1)
     expect(service.reviews.list()).toEqual([])
     await service.undo(undoToken!)
 
@@ -396,7 +404,7 @@ describe('auto-approve', () => {
     expect(tree()).not.toContain('Inbox/sure.png')
     expect(service.reviews.list().map((r) => r.name).sort()).toEqual(['hint.png', 'two.png', 'unsure.png'])
     expect(statuses.at(-1)).toMatchObject({ phase: 'complete', autoApproved: 1 })
-    expect(service.reviews.discordCount()).toBe(1)
+    expect(service.reviews.discordCount()).toBe(0)
   })
 
   it('leaves everything for review if the Characters folder is not watched', async () => {

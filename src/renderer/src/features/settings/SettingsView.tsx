@@ -327,7 +327,7 @@ function ReviewSection() {
         <h3>Auto-approve</h3>
         <ToggleRow
           title="Auto-approve high-confidence matches"
-          text="An image with one suggested character at or above this confidence skips review and goes straight to its character folder and the Discord queue."
+          text="An image with one suggested character at or above this confidence skips review and goes straight to its character folder."
           setting="autoApprove"
         />
         <PercentRow title="Auto-approve confidence" text="Higher is safer. Lower approves more images without you seeing them." setting="autoApproveThreshold" min={50} />

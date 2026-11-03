@@ -21,6 +21,7 @@ interface Call {
   auth: string | null
   payload: Record<string, unknown> | null
   fileName: string | null
+  fileNames: string[]
 }
 
 function json(body: unknown, init: ResponseInit = {}): Response {
@@ -56,13 +57,15 @@ class FakeDiscord {
     }
     let payload: Record<string, unknown> | null = null
     let fileName: string | null = null
+    let fileNames: string[] = []
     if (init?.body instanceof FormData) {
       payload = JSON.parse(String(init.body.get('payload_json')))
       fileName = (init.body.get('files[0]') as File | null)?.name ?? null
+      fileNames = [...init.body.keys()].filter((key) => key.startsWith('files[')).map((key) => (init.body as FormData).get(key) as File).map((file) => file.name)
     } else if (typeof init?.body === 'string') {
       payload = JSON.parse(init.body)
     }
-    this.calls.push({ method, url, auth: new Headers(init?.headers).get('authorization'), payload, fileName })
+    this.calls.push({ method, url, auth: new Headers(init?.headers).get('authorization'), payload, fileName, fileNames })
     if (this.rateLimitOnce && method === 'POST') {
       this.rateLimitOnce = false
       return json({ retry_after: 0.01 }, { status: 429 })
@@ -288,6 +291,17 @@ describe('the queue', () => {
     const queue = discord.getQueue()
     expect(queue.map((q) => q.targets[0]!.name)).toEqual(['Fern', 'Beach Day'])
   })
+
+  it('queues a whole set folder for the set alone', () => {
+    const first = image('Sets/Beach Day/a.png', 'a')
+    const second = image('Sets/Beach Day/More/b.png', 'b')
+    const folder = library.getFolderByPath(path.join(index, 'Sets', 'Beach Day'))!
+    expect(discord.enqueueFolder(folder.id)).toEqual({ queued: 2, unknown: 0 })
+    const queue = discord.getQueue()
+    expect(queue.map((q) => q.id).sort()).toEqual([first, second].sort())
+    expect(queue.flatMap((q) => q.targets.map((t) => t.name))).toEqual(['Beach Day', 'Beach Day'])
+    expect(queue.flatMap((q) => q.missing)).toEqual([])
+  })
 })
 
 describe('uploading', () => {
@@ -360,12 +374,101 @@ describe('uploading', () => {
     expect(discord.getUploadStatus()).toMatchObject({ posted: 1, failed: 1, done: 2 })
   })
 
-  it('does not post anything for an image missing a thread', async () => {
+  it('does not post anything for an image with no connected thread', async () => {
     const id = image('a.png', 'a')
-    reviews.enqueueDiscord(id, ['Fern', 'Stark'], null)
+    reviews.enqueueDiscord(id, ['Stark'], null)
     await upload([id])
     expect(fake.posts()).toEqual([])
     expect(discord.getQueue()[0]!.lastError).toMatch(/No thread for Stark/)
+    expect(discord.getUploadStatus()).toMatchObject({ failed: 1, done: 1 })
+  })
+
+  it('posts a set to its thread when its characters have no threads, and keeps them queued', async () => {
+    const id = image('a.png', 'a')
+    reviews.enqueueDiscord(id, ['Stark', 'Himmel'], 'Beach Day')
+    await upload([id])
+
+    expect(fake.posts().map((p) => p.url)).toEqual([`https://discord.test/api/channels/${BEACH_THREAD}/messages`])
+    expect(discord.getUploadStatus()).toMatchObject({ posted: 1, failed: 0 })
+    const [entry] = discord.getQueue()
+    expect(entry!.targets[0]).toMatchObject({ name: 'Beach Day', posted: true })
+    expect(entry!.missing.map((m) => m.name)).toEqual(['Stark', 'Himmel'])
+    expect(entry!.lastError).toBeNull()
+  })
+
+  it('leaves the queue once a thread connected later has the image too', async () => {
+    const id = image('a.png', 'a')
+    reviews.enqueueDiscord(id, ['Stark'], 'Beach Day')
+    await upload([id])
+    discord.linkThread('characters', 'Stark', '100000000000000013')
+    await upload([id])
+    expect(fake.posts().map((p) => p.url)).toEqual([
+      `https://discord.test/api/channels/${BEACH_THREAD}/messages`,
+      'https://discord.test/api/channels/100000000000000013/messages'
+    ])
+    expect(discord.getQueue()).toEqual([])
+  })
+
+  it('uploads to one thread when asked, leaving the others for later', async () => {
+    const id = image('a.png', 'a')
+    reviews.enqueueDiscord(id, ['Fern'], 'Beach Day')
+    discord.startUpload([id], BEACH_THREAD)
+    await discord.uploadFinished
+
+    expect(fake.posts().map((p) => p.url)).toEqual([`https://discord.test/api/channels/${BEACH_THREAD}/messages`])
+    const targets = discord.getQueue()[0]!.targets
+    expect(targets.find((t) => t.name === 'Fern')!.posted).toBe(false)
+    expect(targets.find((t) => t.name === 'Beach Day')!.posted).toBe(true)
+  })
+
+  it('posts up to ten images in each message, per thread', async () => {
+    const ids = Array.from({ length: 23 }, (_, i) => image(`${i}.png`, `image ${i}`))
+    for (const id of ids) reviews.enqueueDiscord(id, ['Fern'], null)
+    const other = image('set.png', 'set image')
+    reviews.enqueueDiscord(other, [], 'Beach Day')
+    await upload([...ids, other])
+
+    const posts = fake.posts()
+    expect(posts.map((p) => p.fileNames.length)).toEqual([10, 10, 3, 1])
+    expect(posts[0]!.fileNames.slice(0, 2)).toEqual(['0.png', '1.png'])
+    expect(posts[0]!.payload).toEqual({ allowed_mentions: { parse: [] } })
+    expect(posts[3]!.payload).toMatchObject({ content: 'set.png' })
+    expect(discord.getUploadStatus()).toMatchObject({ posted: 24, done: 24, total: 24, failed: 0 })
+    expect(discord.getQueue()).toEqual([])
+    expect(new Set(discord.getHistory().map((h) => h.messageId)).size).toBe(4)
+  })
+
+  it('keeps each message within the server upload limit', async () => {
+    library.setSetting('uploadLimitMb', 1)
+    const ids = ['a', 'b', 'c'].map((n) => image(`${n}.png`, n.repeat(450 * 1024)))
+    for (const id of ids) reviews.enqueueDiscord(id, ['Fern'], null)
+    await upload(ids)
+    expect(fake.posts().map((p) => p.fileNames)).toEqual([['a.png', 'b.png'], ['c.png']])
+  })
+
+  it('keeps a whole failed message queued, and carries on with the next', async () => {
+    const ids = Array.from({ length: 11 }, (_, i) => image(`${i}.png`, `image ${i}`))
+    for (const id of ids) reviews.enqueueDiscord(id, ['Fern'], null)
+    fake.failFor.set(FERN_THREAD, 1)
+    await upload(ids)
+
+    expect(discord.getUploadStatus()).toMatchObject({ posted: 1, failed: 10, done: 11 })
+    expect(discord.getQueue().map((q) => q.id)).toEqual(ids.slice(0, 10))
+    expect(discord.getQueue()[0]!.lastError).toMatch(/permission/)
+  })
+
+  it('deleting a post forgets every image in that message', async () => {
+    const ids = ['a', 'b'].map((n) => image(`${n}.png`, n))
+    const lone = image('c.png', 'c')
+    for (const id of ids) reviews.enqueueDiscord(id, ['Fern'], null)
+    reviews.enqueueDiscord(lone, [], 'Beach Day')
+    await upload([...ids, lone])
+    const entry = discord.getHistory().find((h) => h.name === 'a.png')!
+
+    await discord.deletePost(entry.id)
+
+    expect(fake.calls.filter((c) => c.method === 'DELETE')).toHaveLength(1)
+    expect(discord.getHistory().map((h) => h.name)).toEqual(['c.png'])
   })
 
   it('reports a deleted file instead of failing silently', async () => {
@@ -485,6 +588,19 @@ describe('checking what is already on Discord', () => {
     await upload([id])
     expect(fake.posts().map((p) => p.url)).toEqual([`https://discord.test/api/channels/${BEACH_THREAD}/messages`])
     expect(discord.getQueue()).toEqual([])
+  })
+
+  it('records what is already posted, but keeps an image still waiting on a thread', async () => {
+    const bytes = await pixels(45)
+    const id = await realImage('a.png', bytes)
+    reviews.enqueueDiscord(id, ['Stark'], 'Beach Day')
+    post(BEACH_THREAD, '900', [attachment('1', bytes)])
+
+    await check()
+
+    const [entry] = discord.getQueue()
+    expect(entry!.targets[0]).toMatchObject({ name: 'Beach Day', posted: true })
+    expect(entry!.missing.map((m) => m.name)).toEqual(['Stark'])
   })
 
   it('does not count an image posted to a different thread', async () => {

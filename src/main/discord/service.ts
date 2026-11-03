@@ -26,6 +26,8 @@ const ID = /^\d{17,20}$/
 const MAX_THREAD_PHOTO_BYTES = 25 * 1024 * 1024
 const MAX_FORUM_TAGS = 5
 const HISTORY_LIMIT = 200
+/** Discord allows ten attachments on one message. */
+const MAX_ATTACHMENTS = 10
 const ALLOWED_PARENT_TYPES = new Set([0, 15, 16])
 const FORUM_TYPES = new Set([15, 16])
 const REQUIRES_TAG_FLAG = 16
@@ -413,7 +415,7 @@ export class DiscordService {
       if (this.cancelRequested) break
       this.updateUpload({ name: entry.name, done: compared++, total: queue.length })
       const file = this.library.imageFile(entry.id)
-      if (!file || entry.missing.length || !entry.targets.length) continue
+      if (!file || !entry.targets.length) continue
       try {
         const hash = await this.fileHash(entry.id, file.path)
         const fingerprint = await savedFingerprint(this.library, entry.id, file.path)
@@ -425,7 +427,8 @@ export class DiscordService {
           if (match) record.run(hash, entry.id, entry.name, target.name, target.threadId, match.message_id, match.posted_at)
           else allPosted = false
         }
-        if (allPosted) {
+        // An image still waiting on a thread stays queued for it.
+        if (allPosted && !entry.missing.length) {
           this.reviews.dequeueDiscord([entry.id])
           removed++
         }
@@ -493,6 +496,11 @@ export class DiscordService {
     return { queued, unknown }
   }
 
+  /** Queues every image in a character or set folder, including its subfolders. */
+  enqueueFolder(folderId: number): { queued: number; unknown: number } {
+    return this.enqueueFromFolders(this.library.imageIdsInFolder(folderId))
+  }
+
   // Upload
 
   getUploadStatus(): UploadStatus {
@@ -519,33 +527,35 @@ export class DiscordService {
     return hash
   }
 
-  private async post(file: string, threadId: string): Promise<{ id: string }> {
-    const name = path.basename(file)
-    const bytes = await fsp.readFile(file)
+  /** Posts up to ten images as one message. A lone image is captioned with its filename. */
+  private async post(files: string[], threadId: string): Promise<{ id: string }> {
+    const names = files.map((file) => path.basename(file))
+    const contents = await Promise.all(files.map((file) => fsp.readFile(file)))
     const data = new FormData()
-    data.append('files[0]', new Blob([new Uint8Array(bytes)], { type: mimeOf(name) }), name)
-    data.append('payload_json', JSON.stringify({ content: name, allowed_mentions: { parse: [] } }))
+    contents.forEach((bytes, index) => data.append(`files[${index}]`, new Blob([new Uint8Array(bytes)], { type: mimeOf(names[index]!) }), names[index]!))
+    data.append('payload_json', JSON.stringify({ ...(names.length === 1 ? { content: names[0] } : {}), allowed_mentions: { parse: [] } }))
     return this.client.request(`/channels/${threadId}/messages`, { method: 'POST', body: data })
   }
 
-  /** Starts uploading in the background and returns straight away. Progress arrives as events. */
-  startUpload(ids: number[]): void {
+  /**
+   * Starts uploading in the background and returns straight away. Progress arrives as events.
+   * With a thread, images post only there. Otherwise they post to every thread they're linked to.
+   */
+  startUpload(ids: number[], threadId: string | null = null): void {
     if (this.isBusy()) throw new Error('An upload is already running.')
     if (!this.token) throw new Error('Add the bot token in Discord settings first.')
     const unique = [...new Set(ids)]
     this.cancelRequested = false
     this.updateUpload({ ...IDLE_UPLOAD, phase: 'checking', total: unique.length })
-    this.uploadFinished = this.runUpload(unique)
+    this.uploadFinished = this.runUpload(unique, threadId)
   }
 
   /** Resolves when the current upload ends. */
   uploadFinished: Promise<void> = Promise.resolve()
 
-  private async runUpload(ids: number[]): Promise<void> {
-    let done = 0
+  private async runUpload(ids: number[], onlyThread: string | null): Promise<void> {
     let posted = 0
     let duplicates = 0
-    let failed = 0
     let warning: string | null = null
     if (this.library.getSettings().checkBeforeUpload) {
       try {
@@ -558,49 +568,101 @@ export class DiscordService {
         warning = `Could not check Discord first. ${(error as Error).message}`
       }
     }
-    if (!this.cancelRequested) this.updateUpload({ phase: 'running', done: 0, total: ids.length, duplicates })
+
     const setError = this.db.prepare('UPDATE discord_queue SET last_error = ? WHERE image_id = ?')
-    for (const id of ids) {
-      if (this.cancelRequested) break
-      const entry = this.getQueue().find((item) => item.id === id)
-      if (!entry) {
-        done++
-        continue
-      }
-      this.updateUpload({ name: entry.name, done })
-      try {
-        if (entry.missing.length) throw new Error(`No thread for ${entry.missing.map((m) => m.name).join(', ')}.`)
-        if (!entry.targets.length) throw new Error('This image has no character or set.')
-        if (entry.tooLarge) {
-          const toMb = (bytes: number): string => (bytes / (1024 * 1024)).toFixed(1).replace(/\.0$/, '')
-          throw new Error(`This image is ${toMb(entry.size)} MB, over this server's ${toMb(this.uploadLimitBytes())} MB limit.`)
-        }
-        const file = this.library.imageFile(id)
-        if (!file) throw new Error('This image is no longer available.')
-        const hash = await this.fileHash(id, file.path)
+    const failed = new Set<number>()
+    const fail = (id: number, message: string): void => {
+      setError.run(message, id)
+      failed.add(id)
+    }
+    const wanted = new Set(ids)
+    const queue = this.getQueue().filter((entry) => wanted.has(entry.id))
+    const limit = this.uploadLimitBytes()
+    // Each thread gets its own posts, so a thread that's missing or failing doesn't hold up another.
+    const threads = new Map<string, { name: string; entries: QueueEntry[] }>()
+    for (const entry of queue) {
+      setError.run(null, entry.id)
+      if (!entry.targets.length) {
+        fail(entry.id, entry.missing.length ? `No thread for ${entry.missing.map((m) => m.name).join(', ')}.` : 'This image has no character or set.')
+      } else if (entry.tooLarge) {
+        const toMb = (bytes: number): string => (bytes / (1024 * 1024)).toFixed(1).replace(/\.0$/, '')
+        fail(entry.id, `This image is ${toMb(entry.size)} MB, over this server's ${toMb(limit)} MB limit.`)
+      } else {
         for (const target of entry.targets) {
+          if (onlyThread && target.threadId !== onlyThread) continue
+          const thread = threads.get(target.threadId) ?? { name: target.name, entries: [] }
+          thread.entries.push(entry)
+          threads.set(target.threadId, thread)
+        }
+      }
+    }
+    let done = failed.size
+    const total = done + [...threads.values()].reduce((sum, thread) => sum + thread.entries.length, 0)
+    if (!this.cancelRequested) this.updateUpload({ phase: 'running', done, total, duplicates })
+
+    // An image leaves the queue once it's in all its threads, and none of them is still to be connected.
+    const finish = (finished: number[]): void => {
+      const left = new Map(this.getQueue().map((entry) => [entry.id, entry]))
+      for (const id of finished) {
+        const entry = left.get(id)
+        if (entry && !entry.missing.length && entry.targets.every((target) => target.posted)) this.reviews.dequeueDiscord([id])
+      }
+    }
+    const record = this.db.prepare('INSERT INTO discord_uploads (hash, image_id, name, target_name, thread_id, message_id, posted_at) VALUES (?, ?, ?, ?, ?, ?, ?)')
+
+    for (const [threadId, thread] of threads) {
+      if (this.cancelRequested) break
+      let batch: Array<{ id: number; file: string; hash: string }> = []
+      let batchBytes = 0
+      const seen = new Set<string>()
+      const flush = async (): Promise<void> => {
+        if (!batch.length) return
+        const sending = batch
+        batch = []
+        batchBytes = 0
+        try {
+          const message = await this.post(sending.map((item) => item.file), threadId)
+          this.library.transaction(() => {
+            for (const item of sending) record.run(item.hash, item.id, path.basename(item.file), thread.name, threadId, message.id, Date.now())
+          })
+          posted += sending.length
+          finish(sending.map((item) => item.id))
+        } catch (error) {
+          for (const item of sending) fail(item.id, (error as Error).message)
+        }
+        done += sending.length
+        this.updateUpload({ done, posted, duplicates, failed: failed.size })
+        this.emit()
+      }
+
+      for (const entry of thread.entries) {
+        if (this.cancelRequested) break
+        this.updateUpload({ name: entry.name, done })
+        try {
+          const file = this.library.imageFile(entry.id)
+          if (!file) throw new Error('This image is no longer available.')
+          const { size } = await fsp.stat(file.path)
+          const hash = await this.fileHash(entry.id, file.path)
           // A target finished on an earlier attempt isn't posted twice when a retry happens.
-          const already = this.db.prepare('SELECT 1 FROM discord_uploads WHERE hash = ? AND thread_id = ?').get(hash, target.threadId)
-          if (already) {
+          if (seen.has(hash) || this.db.prepare('SELECT 1 FROM discord_uploads WHERE hash = ? AND thread_id = ?').get(hash, threadId)) {
             duplicates++
+            done++
             continue
           }
-          const message = await this.post(file.path, target.threadId)
-          this.db
-            .prepare('INSERT INTO discord_uploads (hash, image_id, name, target_name, thread_id, message_id, posted_at) VALUES (?, ?, ?, ?, ?, ?, ?)')
-            .run(hash, id, path.basename(file.path), target.name, target.threadId, message.id, Date.now())
-          posted++
+          seen.add(hash)
+          // The server's limit covers the whole message, not each file.
+          if (batch.length === MAX_ATTACHMENTS || (batch.length && batchBytes + size > limit)) await flush()
+          batch.push({ id: entry.id, file: file.path, hash })
+          batchBytes += size
+        } catch (error) {
+          fail(entry.id, (error as Error).message)
+          done++
         }
-        this.reviews.dequeueDiscord([id])
-      } catch (error) {
-        setError.run((error as Error).message, id)
-        failed++
       }
-      done++
-      this.updateUpload({ done, posted, duplicates, failed })
-      this.emit()
+      if (!this.cancelRequested) await flush()
     }
-    this.updateUpload({ phase: this.cancelRequested ? 'cancelled' : 'complete', mode: 'upload', done, posted, duplicates, failed, name: '', warning })
+    finish(queue.map((entry) => entry.id).filter((id) => !failed.has(id)))
+    this.updateUpload({ phase: this.cancelRequested ? 'cancelled' : 'complete', mode: 'upload', done, posted, duplicates, failed: failed.size, name: '', warning })
     this.emit()
   }
 
@@ -626,12 +688,12 @@ export class DiscordService {
     }))
   }
 
-  /** Deletes the post from Discord. The image on this computer stays. */
+  /** Deletes the post from Discord, with every image posted in that message. The images on this computer stay. */
   async deletePost(id: number): Promise<void> {
     const row = this.db.prepare('SELECT thread_id, message_id FROM discord_uploads WHERE id = ?').get(id) as { thread_id: string; message_id: string } | undefined
     if (!row) throw new Error('This post is not in the history.')
     await this.client.request(`/channels/${row.thread_id}/messages/${row.message_id}`, { method: 'DELETE' })
-    this.db.prepare('DELETE FROM discord_uploads WHERE id = ?').run(id)
+    this.db.prepare('DELETE FROM discord_uploads WHERE thread_id = ? AND message_id = ?').run(row.thread_id, row.message_id)
     this.emit()
   }
 }

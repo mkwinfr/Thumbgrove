@@ -15,7 +15,8 @@ function folderItems(folder: FolderInfo): ContextMenuItem[] {
     { label: 'New folder…', icon: FolderPlus, separatorBefore: true, run: action('create') },
     { label: folder.favorite ? 'Remove from favorites' : 'Add to favorites', icon: Star, run: () => void library.toggleFavorite(folder) },
     { label: 'Add tags…', icon: Tags, run: () => library.setTagTarget({ kind: 'folder', folder }) },
-    { label: 'Add to catalogue…', icon: BookImage, run: () => library.setCatalogueTarget({ kind: 'folder', folder }) }
+    { label: 'Add to catalogue…', icon: BookImage, run: () => library.setCatalogueTarget({ kind: 'folder', folder }) },
+    { label: 'Add to Discord queue', icon: Send, run: () => void library.queueFolder(folder) }
   ]
   if (folder.parentId === null) {
     return [...shared, { label: 'Stop watching…', icon: EyeOff, separatorBefore: true, run: action('stop') }]

@@ -92,6 +92,7 @@ interface LibraryState {
   selectAllImages(): Promise<void>
   clearSelection(): void
   queueImages(ids: number[]): Promise<void>
+  queueFolder(folder: FolderInfo): Promise<void>
   finishImages(outcome: ApplyOutcome, verb: string): void
   toggleFavorite(folder: FolderInfo): Promise<void>
   retrack(path: string): Promise<void>
@@ -310,6 +311,14 @@ export const useLibraryStore = create<LibraryState>((set, get) => {
       const { queued, unknown } = await window.thumbGrove.enqueueForDiscord(ids)
       if (queued) notify(`Added ${queued} to the Discord queue`)
       if (unknown) notify(`${unknown} ${unknown === 1 ? 'image is' : 'images are'} not in a character or set folder, so ${unknown === 1 ? 'it' : 'they'} can't be queued.`, 'error')
+    },
+
+    queueFolder: async (folder) => {
+      const { notify } = useAppStore.getState()
+      const { queued, unknown } = await window.thumbGrove.enqueueFolderForDiscord(folder.id)
+      if (queued) notify(`Added ${queued} to the Discord queue`)
+      if (unknown) notify(`${unknown} ${unknown === 1 ? 'image is' : 'images are'} not in a character or set folder, so ${unknown === 1 ? 'it' : 'they'} can't be queued.`, 'error')
+      if (!queued && !unknown) notify('This folder has no images to queue.')
     },
 
     toggleFavorite: async (folder) => {

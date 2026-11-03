@@ -12,6 +12,8 @@ export function HistoryTab() {
   const connected = useDiscordStore((s) => s.status?.connected)
   const deletePost = useDiscordStore((s) => s.deletePost)
   const [confirming, setConfirming] = useState<number | null>(null)
+  // One message can hold several images, and deleting it removes them all.
+  const inPost = (messageId: string): number => history.filter((other) => other.messageId === messageId).length
 
   if (!history.length) {
     return (
@@ -53,14 +55,18 @@ export function HistoryTab() {
                     void deletePost(entry.id)
                   }}
                 >
-                  Delete post
+                  {inPost(entry.messageId) > 1 ? `Delete all ${inPost(entry.messageId)} images` : 'Delete post'}
                 </button>
               </div>
             ) : (
               <button
                 className="button compact ghost thread-action"
                 disabled={!connected}
-                title="Deletes the post from Discord. The image on this computer stays."
+                title={
+                  inPost(entry.messageId) > 1
+                    ? `Deletes this image and the others in its post, ${inPost(entry.messageId)} in all, from Discord. The images on this computer stay.`
+                    : 'Deletes the post from Discord. The image on this computer stays.'
+                }
                 onClick={() => setConfirming(entry.id)}
               >
                 Delete post

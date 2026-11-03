@@ -16,7 +16,7 @@ interface Group {
   entries: QueueEntry[]
 }
 
-/** Groups by where images are going. An image with several destinations appears under each. */
+/** Groups by where images are still going. An image with several destinations appears under each. */
 function buildGroups(queue: QueueEntry[]): Group[] {
   const groups = new Map<string, Group>()
   const add = (key: string, base: Omit<Group, 'key' | 'entries'>, entry: QueueEntry): void => {
@@ -25,7 +25,7 @@ function buildGroups(queue: QueueEntry[]): Group[] {
     groups.set(key, group)
   }
   for (const entry of queue) {
-    for (const target of entry.targets) {
+    for (const target of entry.targets.filter((t) => !t.posted)) {
       add(`thread:${target.threadId}`, { kind: target.kind, title: target.name, subtitle: target.threadName ?? '', missing: false }, entry)
     }
     for (const item of entry.missing) {
@@ -38,15 +38,15 @@ function buildGroups(queue: QueueEntry[]): Group[] {
   return [...groups.values()].sort((a, b) => Number(b.missing) - Number(a.missing) || a.title.localeCompare(b.title))
 }
 
+/** Ready when it can go to at least one connected thread. A missing thread only holds back that thread. */
 function isReady(entry: QueueEntry): boolean {
-  return !entry.missing.length && entry.targets.length > 0 && !entry.tooLarge
+  return entry.targets.some((target) => !target.posted) && !entry.tooLarge
 }
 
-function QueueThumb({ entry, threadId }: { entry: QueueEntry; threadId: string | null }) {
+function QueueThumb({ entry }: { entry: QueueEntry }) {
   const remove = useDiscordStore((s) => s.removeFromQueue)
   const toggleSelected = useDiscordStore((s) => s.toggleSelected)
   const isSelected = useDiscordStore((s) => s.selected.includes(entry.id))
-  const posted = threadId ? entry.targets.find((t) => t.threadId === threadId)?.posted : false
   return (
     <div
       className={`queue-thumb${entry.lastError || entry.tooLarge ? ' failed' : ''}${isSelected ? ' selected' : ''}`}
@@ -57,11 +57,6 @@ function QueueThumb({ entry, threadId }: { entry: QueueEntry; threadId: string |
       </button>
       {isSelected && (
         <span className="tile-check queue-check">
-          <Check size={11} strokeWidth={3} />
-        </span>
-      )}
-      {posted && (
-        <span className="queue-posted" title="Already posted here">
           <Check size={11} strokeWidth={3} />
         </span>
       )}
@@ -78,7 +73,7 @@ function GroupCard({ group, busy }: { group: Group; busy: boolean }) {
   const connected = useDiscordStore((s) => s.status?.connected)
   const remove = useDiscordStore((s) => s.removeFromQueue)
   const selectMany = useDiscordStore((s) => s.selectMany)
-  const ready = group.entries.filter(isReady)
+  const ready = group.entries.filter((entry) => !entry.tooLarge)
   const errors = [...new Set(group.entries.flatMap((entry) => entry.lastError ?? []))]
   const threadId = group.key.startsWith('thread:') ? group.key.slice(7) : null
   const Icon = group.kind === 'sets' ? Layers : group.kind === 'characters' ? UserRound : AlertTriangle
@@ -132,8 +127,8 @@ function GroupCard({ group, busy }: { group: Group; busy: boolean }) {
             <button
               className="button compact"
               disabled={busy || !connected || !ready.length}
-              title="Posts these images to all of their destinations"
-              onClick={() => void startUpload(ready.map((entry) => entry.id))}
+              title="Posts these images to this thread only, up to 10 in each message"
+              onClick={() => void startUpload(ready.map((entry) => entry.id), threadId ?? undefined)}
             >
               <Send size={14} />
               Upload
@@ -148,7 +143,7 @@ function GroupCard({ group, busy }: { group: Group; busy: boolean }) {
       ))}
       <div className="queue-thumbs">
         {group.entries.slice(0, MAX_THUMBS).map((entry) => (
-          <QueueThumb key={entry.id} entry={entry} threadId={threadId} />
+          <QueueThumb key={entry.id} entry={entry} />
         ))}
         {group.entries.length > MAX_THUMBS && <div className="queue-more">+{group.entries.length - MAX_THUMBS}</div>}
       </div>
@@ -220,7 +215,7 @@ function UploadBar({ ready, busy, missing, setBulkOpen }: { ready: number[]; bus
           {tooLarge
             ? `${tooLarge} ${tooLarge === 1 ? 'is' : 'are'} over this server's ${Math.round(limit / (1024 * 1024))} MB limit.`
             : ready.length < queueSize
-              ? 'The rest need a thread first.'
+              ? 'The rest only need threads that are not connected yet.'
               : 'Failed images stay here so you can retry them.'}
         </small>
       </div>
@@ -236,7 +231,7 @@ function UploadBar({ ready, busy, missing, setBulkOpen }: { ready: number[]; bus
               void startUpload(ready)
             }}
           >
-            Post {ready.length} to Discord
+            Post {ready.length} to connected threads
           </button>
         </div>
       ) : (
@@ -291,7 +286,7 @@ export function QueueTab() {
           </div>
         </div>
         <h1>The queue is empty</h1>
-        <p>Images you apply in Review appear here, ready to post.</p>
+        <p>Use the send button when applying in Review, or right-click images or a folder in Folders and choose Add to Discord queue.</p>
       </div>
     )
   }

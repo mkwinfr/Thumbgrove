@@ -211,6 +211,8 @@ export interface ApplyRequest {
   setName: string | null
   placeInCharacters: boolean
   placeInSet: boolean
+  /** Also adds the image to the Discord queue. Applying alone only sorts the file. */
+  queueForDiscord?: boolean
 }
 
 export interface ApplyResult {
@@ -408,6 +410,7 @@ export interface ThumbGroveApi {
   copyImagePath(id: number): Promise<void>
   /** Queues images for Discord using the character or set folder they're in. */
   enqueueForDiscord(ids: number[]): Promise<{ queued: number; unknown: number }>
+  enqueueFolderForDiscord(folderId: number): Promise<{ queued: number; unknown: number }>
   renameImages(requests: Array<{ id: number; name: string }>): Promise<ApplyOutcome>
   renameImagesToBase(ids: number[], base: string): Promise<ApplyOutcome>
   moveImages(ids: number[], destination: string): Promise<ApplyOutcome>
@@ -449,7 +452,8 @@ export interface ThumbGroveApi {
   restoreToDiscordQueue(rows: RemovedFromQueue[]): Promise<void>
   /** Compares the queue with what's on Discord and removes images already there. Posts nothing. */
   startDiscordCheck(): Promise<void>
-  startDiscordUpload(ids: number[]): Promise<void>
+  /** With a thread, images post only there. Otherwise they post to every thread they are linked to. */
+  startDiscordUpload(ids: number[], threadId?: string): Promise<void>
   cancelDiscordUpload(): Promise<void>
   getDiscordUploadStatus(): Promise<UploadStatus>
   getDiscordHistory(): Promise<HistoryEntry[]>

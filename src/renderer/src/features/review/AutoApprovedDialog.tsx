@@ -51,7 +51,7 @@ export function AutoApprovedDialog() {
       <div className="picker">
         {items.length ? (
           <>
-            <p className="dialog-text">These went straight to their character folders and the Discord queue. Undo puts an image back where it was and returns it to review.</p>
+            <p className="dialog-text">These went straight to their character folders. Undo puts an image back where it was and returns it to review.</p>
             <ul className="picker-list auto-list" aria-label="Auto-approved images">
               {items.map((item) => (
                 <li key={item.id} className="auto-row">

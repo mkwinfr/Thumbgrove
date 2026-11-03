@@ -94,7 +94,7 @@ interface AppState {
   setEditingCharacter(raw: string | null): void
   saveCharacterName(raw: string, name: string, series: string): Promise<void>
 
-  apply(): Promise<void>
+  apply(queueForDiscord?: boolean): Promise<void>
   skip(): Promise<void>
   remove(): Promise<void>
   clearQueue(): Promise<void>
@@ -502,7 +502,7 @@ export const useAppStore = create<AppState>((set, get) => {
       await get().reloadReview()
     },
 
-    apply: async () => {
+    apply: async (queueForDiscord = false) => {
       const state = get()
       const ids = targetIds(state)
       if (!ids.length) return
@@ -530,7 +530,8 @@ export const useAppStore = create<AppState>((set, get) => {
           characters: draft.characters,
           setName: draft.setName,
           placeInCharacters: draft.placeInCharacters,
-          placeInSet: draft.placeInSet
+          placeInSet: draft.placeInSet,
+          queueForDiscord
         }]
       })
       const flights: Flight[] = requests.slice(0, MAX_FLIGHTS).map((request, index) => {
@@ -541,7 +542,7 @@ export const useAppStore = create<AppState>((set, get) => {
       set((s) => ({
         usedNames: new Set([...s.usedNames, ...reservedNames]),
         flights: [...s.flights, ...flights],
-        discordQueued: s.discordQueued + requests.length
+        discordQueued: s.discordQueued + (queueForDiscord ? requests.length : 0)
       }))
       const applied = state.drafts[ids[0]!]!
       leaveQueue(ids, 'apply')

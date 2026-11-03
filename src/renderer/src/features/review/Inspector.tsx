@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
-import { AlertTriangle, Check, CornerDownLeft, History, Layers, Sparkles, Pencil, RotateCcw, Trash2, UserRound, X } from 'lucide-react'
+import { AlertTriangle, Check, CornerDownLeft, History, Layers, Sparkles, Pencil, RotateCcw, Send, Trash2, UserRound, X } from 'lucide-react'
 import { displayName, nameKey } from '../../../../shared/naming'
 import { planPlacement } from '../../../../shared/placement'
 import { Combobox, type ComboOption } from '../../components/Combobox'
@@ -340,7 +340,15 @@ export function Inspector() {
         <button className="button" title="Skip for now (S)" onClick={skip}>
           Skip
         </button>
-        <motion.button className="button primary apply" whileTap={{ scale: 0.97 }} title="Apply and queue for Discord (Enter)" onClick={apply}>
+        <button
+          className="button icon-only"
+          aria-label={count > 1 ? `Apply ${count} images and add them to the Discord queue` : 'Apply and add to the Discord queue'}
+          title="Apply and add to the Discord queue (Shift+Enter)"
+          onClick={() => void apply(true)}
+        >
+          <Send size={17} />
+        </button>
+        <motion.button className="button primary apply" whileTap={{ scale: 0.97 }} title="Apply (Enter)" onClick={() => void apply()}>
           {count > 1 ? `Apply ${count} images` : 'Apply'}
           <CornerDownLeft size={15} />
         </motion.button>

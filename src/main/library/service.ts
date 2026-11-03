@@ -1008,7 +1008,7 @@ export class LibraryService {
           // Rescanning normally keeps the id. A move between drives creates a new one.
           const id = this.library.imageIdAtPath(journal.to) ?? request.id
           this.reviews.dismiss(id === request.id ? [id] : [request.id, id], 'processed')
-          this.reviews.enqueueDiscord(id, request.characters, request.setName)
+          if (request.queueForDiscord) this.reviews.enqueueDiscord(id, request.characters, request.setName)
           if (learn && row && settings.learnCorrections) this.reviews.learnFromChoice(JSON.parse(row.candidates) as Candidate[], request.characters)
           if (request.setName) this.reviews.recordSetSource(path.dirname(journal.from), request.setName)
           // Characters and sets become tags, so they can be searched wherever the file ends up.
@@ -1120,7 +1120,7 @@ export class LibraryService {
 
   /**
    * Applies an image with one confident character match and nothing else suggested. The image goes
-   * to its character folder and the Discord queue, the same as if it had been reviewed by hand.
+   * to its character folder, the same as if it had been reviewed by hand.
    */
   private async autoApprove(results: Map<number, Array<{ tag: string; score: number; filenameOnly?: boolean }>>): Promise<number> {
     const settings = this.library.getSettings()

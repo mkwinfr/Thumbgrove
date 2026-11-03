@@ -4,6 +4,8 @@ on:
   push:
     tags:
       - 'v*'
+  # Publishes the version in package.json, in case a tag push doesn't start a run.
+  workflow_dispatch:
 
 permissions:
   contents: write

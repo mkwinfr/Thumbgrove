@@ -16,7 +16,7 @@ The release steps are in [RELEASING.md](RELEASING.md).
 
 - Mac or Linux versions.
 - A Microsoft Store release.
-- Code signing and automatic updates, until Phase 4 decides them.
+- Code signing, until Phase 4 decides it.
 
 ## Phase 1: Get the app ready
 
@@ -62,11 +62,11 @@ These are meant for a clean Windows user account or Windows Sandbox. Ticked item
 | Automatic updates | The app finds and installs new versions, using `electron-updater` | Somewhere to host releases, plus setup and testing | Add if manual updates become annoying |
 | Code signing | Fewer or no SmartScreen warnings, and a verified publisher name | A paid certificate or signing service, and identity checks | Recommended now that Thumb Grove is going to other people |
 
-**Decision so far:** manual updates, with installers on GitHub Releases. Signing is still to be decided now that Thumb Grove is shared. Check current signing prices and requirements, because they change.
+**Decision so far:** automatic updates, with `electron-updater` and releases built by GitHub Actions. Signing is still to be decided now that Thumb Grove is shared. Check current signing prices and requirements, because they change.
 
 ## Phase 5: Release routine
 
 - [x] Choose a version number for each release, and keep short release notes.
 - [x] Tag each release in git.
-- [x] Run this before each release: `npm test`, `npm run dist`, then an upgrade over the previous installer.
+- [x] Release with `npm run release`, which runs the checks and hands the build to GitHub Actions.
 - [x] Back up the repository somewhere other than this computer.

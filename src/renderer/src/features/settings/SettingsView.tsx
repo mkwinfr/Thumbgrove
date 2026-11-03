@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import { motion } from 'motion/react'
 import { AlertTriangle, EyeOff, FolderTree, Info, ScanSearch, Send, X, type LucideIcon } from 'lucide-react'
-import type { AppInfo, Correction, Settings } from '../../../../shared/api'
+import type { AppInfo, Correction, Settings, UpdateStatus } from '../../../../shared/api'
 import { displayName } from '../../../../shared/naming'
 import { Dialog } from '../../components/Dialog'
 import { FolderPicker } from '../../components/FolderPicker'
@@ -252,6 +252,48 @@ function LearnedCorrections() {
   )
 }
 
+function updateText(status: UpdateStatus | null): string {
+  switch (status?.phase) {
+    case 'checking':
+      return 'Checking for updates.'
+    case 'current':
+      return 'You have the latest version.'
+    case 'downloading':
+      return `Downloading version ${status.version}. ${status.percent}% done.`
+    case 'ready':
+      return `Version ${status.version} is ready. It installs when you restart or next close Thumb Grove.`
+    case 'error':
+      return status.error ?? ''
+    case 'unavailable':
+      return 'This copy does not update itself. Get new versions from the Releases page.'
+    default:
+      return 'Updates download in the background.'
+  }
+}
+
+function UpdateRow() {
+  const [status, setStatus] = useState<UpdateStatus | null>(null)
+  useEffect(() => {
+    void window.thumbGrove.getUpdateStatus().then(setStatus)
+    return window.thumbGrove.onUpdateStatus(setStatus)
+  }, [])
+  return (
+    <Row title="Updates" text={updateText(status)}>
+      {status?.phase === 'ready' ? (
+        <button className="button compact primary" onClick={() => void window.thumbGrove.installUpdate()}>
+          Restart to update
+        </button>
+      ) : status && status.phase !== 'unavailable' ? (
+        <button className="button compact" disabled={status.phase === 'checking' || status.phase === 'downloading'} onClick={() => void window.thumbGrove.checkForUpdates()}>
+          Check now
+        </button>
+      ) : (
+        <span />
+      )}
+    </Row>
+  )
+}
+
 function AboutSection() {
   const [info, setInfo] = useState<AppInfo | null>(null)
   useEffect(() => void window.thumbGrove.getAppInfo().then(setInfo), [])
@@ -264,9 +306,10 @@ function AboutSection() {
           <small>Your images. Neatly Rooted</small>
         </span>
       </div>
-      <Row title={`Version ${info?.version ?? ''}`} text="Thumb Grove only uses the internet for Discord and the first download of the recognition model.">
+      <Row title={`Version ${info?.version ?? ''}`} text="Thumb Grove only uses the internet for Discord, app updates, and the first download of the recognition model.">
         <span />
       </Row>
+      <UpdateRow />
       <div className="setting-path setting-root">
         <div className="setting-root-text">
           <strong>Thumb Grove's data</strong>

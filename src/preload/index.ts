@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
-import type { ThumbGroveApi, LibraryEvent } from '../shared/api'
+import type { ThumbGroveApi, LibraryEvent, UpdateStatus } from '../shared/api'
 
 const api: ThumbGroveApi = {
   getSettings: () => ipcRenderer.invoke('settings:get'),
@@ -97,6 +97,14 @@ const api: ThumbGroveApi = {
   getDiscordUploadStatus: () => ipcRenderer.invoke('discord:upload-status'),
   getDiscordHistory: () => ipcRenderer.invoke('discord:history'),
   deleteDiscordPost: (id) => ipcRenderer.invoke('discord:delete-post', id),
+  getUpdateStatus: () => ipcRenderer.invoke('updates:status'),
+  checkForUpdates: () => ipcRenderer.invoke('updates:check'),
+  installUpdate: () => ipcRenderer.invoke('updates:install'),
+  onUpdateStatus: (listener) => {
+    const handler = (_event: IpcRendererEvent, status: UpdateStatus): void => listener(status)
+    ipcRenderer.on('updates:status', handler)
+    return () => ipcRenderer.removeListener('updates:status', handler)
+  },
   onLibraryEvent: (listener) => {
     const handler = (_event: IpcRendererEvent, event: LibraryEvent): void => listener(event)
     ipcRenderer.on('library:event', handler)

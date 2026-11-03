@@ -19,6 +19,11 @@ async function start(): Promise<void> {
       </MotionConfig>
     </StrictMode>
   )
+  window.thumbGrove.onUpdateStatus((status) => {
+    if (status.phase === 'ready') {
+      useAppStore.getState().notify(`Version ${status.version} is ready`, 'default', { label: 'Restart', run: () => void window.thumbGrove.installUpdate() })
+    }
+  })
   await Promise.all([useLibraryStore.getState().init(settings), useDiscordStore.getState().init()])
 }
 

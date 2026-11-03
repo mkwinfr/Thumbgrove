@@ -13,9 +13,11 @@
     "build": "electron-vite build",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "dist": "electron-vite build && electron-builder --win --x64"
+    "dist": "electron-vite build && electron-builder --win --x64",
+    "release": "npm test && tsc --noEmit && npm version patch && git push origin HEAD --follow-tags"
   },
   "dependencies": {
+    "electron-updater": "^6.8.11",
     "onnxruntime-node": "^1.31.1",
     "sharp": "^0.35.5"
   },
@@ -42,6 +44,14 @@
     "appId": "com.thumbgrove.app",
     "productName": "Thumb Grove",
     "electronDist": "node_modules/electron/dist",
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "mkwinfr",
+        "repo": "Thumbgrove",
+        "releaseType": "release"
+      }
+    ],
     "directories": {
       "output": "dist",
       "buildResources": "build"

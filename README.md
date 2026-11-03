@@ -58,7 +58,7 @@ You need 64-bit Windows.
 1. Download `Thumb-Grove-Setup-<version>.exe` from the [Releases page](https://github.com/mkwinfr/Thumbgrove/releases) and run it. It installs for your user only, so it doesn't need administrator rights.
 2. If Windows SmartScreen warns you, choose **More info**, then **Run anyway**. The warning appears because the installer isn't code signed.
 
-To update, run the new installer over your current version. Your library and settings stay in place.
+Thumb Grove updates itself. New versions download in the background and install when you restart, and your library and settings stay in place. The portable version doesn't update itself, so download the new file from the Releases page.
 
 ## Get started
 
@@ -88,7 +88,7 @@ To check for images other people have already posted, also turn on **Message Con
 
 ## Privacy and your data
 
-- **Internet use:** Thumb Grove only goes online to talk to Discord and to download the recognition model once. Recognition runs on your computer, and your images are never uploaded for it. Images only reach Discord when you post them.
+- **Internet use:** Thumb Grove only goes online to talk to Discord, to check GitHub for app updates, and to download the recognition model once. Recognition runs on your computer, and your images are never uploaded for it. Images only reach Discord when you post them.
 - **Bot token:** it's encrypted on your computer, and is hidden from the error log.
 - **Your files:** moves never overwrite an existing file. A file with the same name gets a number added.
 - **Where data lives:** your library, settings, and token are in `%APPDATA%\Thumb Grove`. Before a database upgrade, Thumb Grove saves a backup there and keeps the last five.

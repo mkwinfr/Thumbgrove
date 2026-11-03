@@ -305,6 +305,15 @@ export interface RemovedFromQueue {
   queuedAt: number
 }
 
+export interface UpdateStatus {
+  /** `unavailable` means this copy doesn't update itself, like the portable version. */
+  phase: 'unavailable' | 'idle' | 'checking' | 'current' | 'downloading' | 'ready' | 'error'
+  /** The version being downloaded or ready to install. */
+  version: string | null
+  percent: number
+  error: string | null
+}
+
 export interface UploadStatus {
   phase: 'idle' | 'checking' | 'running' | 'cancelling' | 'complete' | 'cancelled'
   /** Whether this job posts images, or only compares the queue with Discord. */
@@ -458,6 +467,11 @@ export interface ThumbGroveApi {
   getDiscordUploadStatus(): Promise<UploadStatus>
   getDiscordHistory(): Promise<HistoryEntry[]>
   deleteDiscordPost(id: number): Promise<void>
+  getUpdateStatus(): Promise<UpdateStatus>
+  checkForUpdates(): Promise<void>
+  /** Closes the app and installs the downloaded update. */
+  installUpdate(): Promise<void>
+  onUpdateStatus(listener: (status: UpdateStatus) => void): () => void
   onLibraryEvent(listener: (event: LibraryEvent) => void): () => void
 }
 

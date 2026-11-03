@@ -5,6 +5,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 import type { ApplyRequest, DiscordSaveRequest, Draft, ThumbGroveApi, ImageQuery, LibraryEvent, ScanRequest, SettingsChange, ThreadKind } from '../shared/api'
 import { LibraryClient } from './library/client'
 import { startLog, writeLog } from './log'
+import { checkForUpdates, getUpdateStatus, installUpdate, startUpdater } from './updater'
 
 // Lets checks run against a throwaway library instead of the real one.
 if (process.env.THUMBGROVE_DATA_DIR) app.setPath('userData', process.env.THUMBGROVE_DATA_DIR)
@@ -97,6 +98,9 @@ function registerHandlers(): void {
   handle('corrections:list', () => library.call('getCorrections'))
   handle('corrections:forget', (_e, suggested: string, chosen: string) => library.call('forgetCorrection', suggested, chosen))
   handle('app:info', () => library.call('getAppInfo', app.getVersion()))
+  handle('updates:status', () => getUpdateStatus())
+  handle('updates:check', () => checkForUpdates())
+  handle('updates:install', () => installUpdate())
   handle('app:open-data', () => shell.openPath(app.getPath('userData')))
   handle('app:open-logs', () => shell.openPath(path.join(app.getPath('userData'), 'logs')))
   handle('catalogues:move', (_e, id: number, imageId: number, beforeImageId: number | null) => library.call('moveInCatalogue', id, imageId, beforeImageId))
@@ -333,6 +337,7 @@ void app.whenReady().then(() => {
   registerHandlers()
   void loadDiscordToken()
   createWindow()
+  startUpdater((status) => window?.webContents.send('updates:status', status))
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
   })

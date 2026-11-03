@@ -1,7 +1,7 @@
 {
   "name": "thumb-grove",
   "productName": "Thumb Grove",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "Your images. Neatly Rooted. A watched-folder image manager for sorting characters and sets and posting them to Discord",
   "author": "mkwinfr",
   "private": true,

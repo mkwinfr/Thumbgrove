@@ -1,14 +1,24 @@
 <p align="center">
-  <img src="src/renderer/src/assets/logo.png" alt="The Thumb Grove mascot, a smiling acorn holding a stack of pictures" width="180">
+  <img src="docs/banner.png" alt="Thumb Grove: Your images. Neatly Rooted. The mascot, a smiling acorn holding a stack of pictures, next to the app's Review page.">
 </p>
 
-<h1 align="center">Thumb Grove</h1>
+<p align="center">
+  <a href="https://github.com/mkwinfr/Thumbgrove/releases"><img src="https://img.shields.io/badge/Download_for_Windows-3f8f4f?style=for-the-badge" alt="Download for Windows"></a>
+</p>
 
-<p align="center"><strong>Your images. Neatly Rooted</strong></p>
+<p align="center">
+  <a href="https://github.com/mkwinfr/Thumbgrove/releases"><img src="https://img.shields.io/github/v/release/mkwinfr/Thumbgrove?include_prereleases&label=version" alt="Latest version"></a>
+  <img src="https://img.shields.io/badge/platform-Windows%2064--bit-5b6bd5" alt="Platform: Windows 64-bit">
+  <img src="https://img.shields.io/badge/recognition-on%20your%20PC-2a9d8f" alt="Recognition runs on your PC">
+</p>
 
 Thumb Grove is a Windows app for large image collections. It watches your folders, suggests which character each new image shows, sorts images into character and set folders once you approve them, and can post them to your own Discord server.
 
 Your images stay on your computer. Thumb Grove indexes them where they are, and only moves a file when you approve it or ask it to.
+
+<p align="center">
+  <img src="docs/screenshots/review.png" alt="The Review page, with a suggested character ticked, filename, destination folders, and a strip of images waiting." width="900">
+</p>
 
 ## Features
 
@@ -23,14 +33,29 @@ Your images stay on your computer. Thumb Grove indexes them where they are, and 
 
 Thumb Grove reads JPG, PNG, WebP, GIF, and BMP files.
 
+<table>
+  <tr>
+    <td width="33%"><img src="docs/screenshots/folders.png" alt="The Folders page, with a folder tree and a grid of images."></td>
+    <td width="33%"><img src="docs/screenshots/catalogues.png" alt="A catalogue of images in a chosen order, with a star on its cover."></td>
+    <td width="33%"><img src="docs/screenshots/settings.png" alt="The Settings window over a blurred background, showing review options."></td>
+  </tr>
+  <tr>
+    <td align="center">Browse your folders</td>
+    <td align="center">Build catalogues</td>
+    <td align="center">Choose how it works</td>
+  </tr>
+</table>
+
+Screenshots use generated art and made-up characters.
+
 ## Install
 
 > [!NOTE]
-> Thumb Grove is in early development, and no installer has been published yet. Once one is, it will be on the [Releases page](https://github.com/mkwinfr/Thumbgrove/releases). Until then, you can [build it yourself](#build-from-source).
+> Thumb Grove is an early pre-release, and has only been tested on one PC so far. Please report problems on the [Issues page](https://github.com/mkwinfr/Thumbgrove/issues).
 
 You need 64-bit Windows.
 
-1. Download `Thumb-Grove-Setup-<version>.exe` and run it. It installs for your user only, so it doesn't need administrator rights.
+1. Download `Thumb-Grove-Setup-<version>.exe` from the [Releases page](https://github.com/mkwinfr/Thumbgrove/releases) and run it. It installs for your user only, so it doesn't need administrator rights.
 2. If Windows SmartScreen warns you, choose **More info**, then **Run anyway**. The warning appears because the installer isn't code signed.
 
 To update, run the new installer over your current version. Your library and settings stay in place.

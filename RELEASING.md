@@ -26,10 +26,10 @@ The installer contains only the app. It holds no library, token, server, channel
    This creates `dist\Thumb-Grove-Setup-<version>.exe` and the portable `dist\Thumb-Grove-<version>.exe`.
 4. Check that the build carries nothing personal: search `out\` for your username and your server, channel, and thread IDs.
 5. Close Thumb Grove, run the new installer over your current version, and check that your library is intact. If the database format changed, Settings → About shows one more backup.
-6. Commit, then tag the release:
+6. Commit and push, then publish the installer. Mark it as a pre-release until it has passed the clean PC checks in `ROADMAP.md`, and include its SHA-256 in the notes.
 
    ```bash
-   git tag v<version>
+   gh release create v<version> "dist/Thumb-Grove-Setup-<version>.exe" --title "Thumb Grove <version>" --notes-file <notes-file> --prerelease
    ```
 
 ## Good to know

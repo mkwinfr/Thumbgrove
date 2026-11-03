@@ -3,7 +3,7 @@
 Thumb Grove ships as a Windows installer, `Thumb-Grove-Setup-<version>.exe`, and as one portable file, `Thumb-Grove-<version>.exe`.
 The release steps are in [RELEASING.md](RELEASING.md).
 
-**Status:** Phases 1 and 2 are done. Phase 3 is partly done, because it has only run on the main Windows account so far. Phase 4 is partly decided.
+**Status:** Phases 1 and 2 are done, and the first pre-release is published. Phase 3 is partly done, because it has only run on the main Windows account so far. Phase 4 is partly decided.
 
 ## Goals
 
@@ -62,11 +62,11 @@ These are meant for a clean Windows user account or Windows Sandbox. Ticked item
 | Automatic updates | The app finds and installs new versions, using `electron-updater` | Somewhere to host releases, plus setup and testing | Add if manual updates become annoying |
 | Code signing | Fewer or no SmartScreen warnings, and a verified publisher name | A paid certificate or signing service, and identity checks | Recommended now that Thumb Grove is going to other people |
 
-**Decision so far:** manual updates. Signing and hosting are still to be decided now that Thumb Grove will be shared. Check current signing prices and requirements, because they change.
+**Decision so far:** manual updates, with installers on GitHub Releases. Signing is still to be decided now that Thumb Grove is shared. Check current signing prices and requirements, because they change.
 
 ## Phase 5: Release routine
 
 - [x] Choose a version number for each release, and keep short release notes.
-- [ ] Tag each release in git.
+- [x] Tag each release in git.
 - [x] Run this before each release: `npm test`, `npm run dist`, then an upgrade over the previous installer.
 - [x] Back up the repository somewhere other than this computer.

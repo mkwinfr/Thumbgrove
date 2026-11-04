@@ -22,6 +22,14 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npx tsc --noEmit
+      # The uploads run side by side, and each would create its own release if none exists yet.
+      - name: Create the release
+        shell: bash
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          gh release view "v$version" > /dev/null 2>&1 || gh release create "v$version" --title "Thumb Grove $version" --generate-notes --target "$GITHUB_SHA"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - run: npm run dist -- --publish always
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -225,6 +225,8 @@ export interface ApplyResult {
 export interface ApplyOutcome {
   results: ApplyResult[]
   undoToken: number | null
+  /** Images asked to be queued that were already in all their Discord threads. */
+  alreadyPosted?: number
 }
 
 export interface ScanRequest {
@@ -303,6 +305,14 @@ export interface RemovedFromQueue {
   characters: string
   setName: string | null
   queuedAt: number
+}
+
+export interface EnqueueResult {
+  queued: number
+  /** Not in a character or set folder, so there is nowhere to post them. */
+  unknown: number
+  /** Already in all their threads, so not queued. */
+  alreadyPosted: number
 }
 
 export interface UpdateStatus {
@@ -418,8 +428,8 @@ export interface ThumbGroveApi {
   revealImage(id: number): Promise<void>
   copyImagePath(id: number): Promise<void>
   /** Queues images for Discord using the character or set folder they're in. */
-  enqueueForDiscord(ids: number[]): Promise<{ queued: number; unknown: number }>
-  enqueueFolderForDiscord(folderId: number): Promise<{ queued: number; unknown: number }>
+  enqueueForDiscord(ids: number[]): Promise<EnqueueResult>
+  enqueueFolderForDiscord(folderId: number): Promise<EnqueueResult>
   renameImages(requests: Array<{ id: number; name: string }>): Promise<ApplyOutcome>
   renameImagesToBase(ids: number[], base: string): Promise<ApplyOutcome>
   moveImages(ids: number[], destination: string): Promise<ApplyOutcome>

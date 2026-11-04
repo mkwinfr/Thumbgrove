@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { ApplyOutcome, FolderInfo, ImageInfo, ImageSort, RootInfo, ScanStatus, Settings, UntrackedFolder } from '../../../../shared/api'
+import type { ApplyOutcome, EnqueueResult, FolderInfo, ImageInfo, ImageSort, RootInfo, ScanStatus, Settings, UntrackedFolder } from '../../../../shared/api'
 import { errorMessage } from '../../errors'
 import { useAppStore } from '../../store'
 
@@ -123,6 +123,13 @@ const inFlight = new Set<string>()
 let settings: Settings | null = null
 let refreshTimer: ReturnType<typeof setTimeout> | null = null
 let searchTimer: ReturnType<typeof setTimeout> | null = null
+
+function reportQueued({ queued, unknown, alreadyPosted }: EnqueueResult): void {
+  const { notify, setAlreadyPosted } = useAppStore.getState()
+  if (alreadyPosted) setAlreadyPosted({ count: alreadyPosted, queued })
+  else if (queued) notify(`Added ${queued} to the Discord queue`)
+  if (unknown) notify(`${unknown} ${unknown === 1 ? 'image is' : 'images are'} not in a character or set folder, so ${unknown === 1 ? 'it' : 'they'} can't be queued.`, 'error')
+}
 
 export const useLibraryStore = create<LibraryState>((set, get) => {
   const query = (offset: number) => {
@@ -307,18 +314,13 @@ export const useLibraryStore = create<LibraryState>((set, get) => {
     },
 
     queueImages: async (ids) => {
-      const { notify } = useAppStore.getState()
-      const { queued, unknown } = await window.thumbGrove.enqueueForDiscord(ids)
-      if (queued) notify(`Added ${queued} to the Discord queue`)
-      if (unknown) notify(`${unknown} ${unknown === 1 ? 'image is' : 'images are'} not in a character or set folder, so ${unknown === 1 ? 'it' : 'they'} can't be queued.`, 'error')
+      reportQueued(await window.thumbGrove.enqueueForDiscord(ids))
     },
 
     queueFolder: async (folder) => {
-      const { notify } = useAppStore.getState()
-      const { queued, unknown } = await window.thumbGrove.enqueueFolderForDiscord(folder.id)
-      if (queued) notify(`Added ${queued} to the Discord queue`)
-      if (unknown) notify(`${unknown} ${unknown === 1 ? 'image is' : 'images are'} not in a character or set folder, so ${unknown === 1 ? 'it' : 'they'} can't be queued.`, 'error')
-      if (!queued && !unknown) notify('This folder has no images to queue.')
+      const result = await window.thumbGrove.enqueueFolderForDiscord(folder.id)
+      reportQueued(result)
+      if (!result.queued && !result.unknown && !result.alreadyPosted) useAppStore.getState().notify('This folder has no images to queue.')
     },
 
     toggleFavorite: async (folder) => {

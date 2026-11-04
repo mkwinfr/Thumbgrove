@@ -283,20 +283,60 @@ describe('the queue', () => {
     expect(discord.getQueue()[0]!.targets).toHaveLength(1)
   })
 
-  it('queues browsed images from their folder', () => {
+  it('queues browsed images from their folder', async () => {
     const inCharacter = image('Characters/Fern/a.png', 'a')
     const inSet = image('Sets/Beach Day/b.png', 'b')
     const elsewhere = image('Other/c.png', 'c')
-    expect(discord.enqueueFromFolders([inCharacter, inSet, elsewhere])).toEqual({ queued: 2, unknown: 1 })
+    expect(await discord.enqueueFromFolders([inCharacter, inSet, elsewhere])).toEqual({ queued: 2, unknown: 1, alreadyPosted: 0 })
     const queue = discord.getQueue()
     expect(queue.map((q) => q.targets[0]!.name)).toEqual(['Fern', 'Beach Day'])
   })
 
-  it('queues a whole set folder for the set alone', () => {
+  it('does not queue images already in all their threads, and reports them', async () => {
+    const posted = image('Characters/Fern/a.png', 'a')
+    const fresh = image('Characters/Fern/b.png', 'b')
+    await discord.enqueueFromFolders([posted])
+    await upload([posted])
+    expect(discord.getQueue()).toEqual([])
+
+    expect(await discord.enqueueFromFolders([posted, fresh])).toEqual({ queued: 1, unknown: 0, alreadyPosted: 1 })
+    expect(discord.getQueue().map((q) => q.id)).toEqual([fresh])
+    expect(reviews.discordCount()).toBe(1)
+  })
+
+  it('reports an image with the same bytes as one already posted, even before it has a hash', async () => {
+    const posted = image('Characters/Fern/a.png', 'same')
+    const copy = image('Characters/Fern/copy.png', 'same')
+    await discord.enqueueFromFolders([posted])
+    await upload([posted])
+    expect(await discord.enqueueFromFolders([copy])).toEqual({ queued: 0, unknown: 0, alreadyPosted: 1 })
+    expect(reviews.discordCount()).toBe(0)
+  })
+
+  it('keeps an image that still needs one of its threads', async () => {
+    const id = image('a.png', 'a')
+    reviews.enqueueDiscord(id, ['Fern'], null)
+    await upload([id])
+    reviews.enqueueDiscord(id, ['Fern', 'Stark'], null)
+    expect(await discord.removeAlreadyQueuedPosted([id])).toBe(0)
+    expect(discord.getQueue()[0]!.missing.map((m) => m.name)).toEqual(['Stark'])
+  })
+
+  it('clears images stuck from an earlier version when the app starts', async () => {
+    const id = image('a.png', 'a')
+    reviews.enqueueDiscord(id, ['Fern'], null)
+    await upload([id])
+    reviews.enqueueDiscord(id, ['Fern'], null)
+    expect(reviews.discordCount()).toBe(1)
+    new DiscordService({ library, reviews, emit: () => undefined, fetcher: fake.fetch, apiBase: 'https://discord.test/api', sleep: async () => undefined })
+    expect(reviews.discordCount()).toBe(0)
+  })
+
+  it('queues a whole set folder for the set alone', async () => {
     const first = image('Sets/Beach Day/a.png', 'a')
     const second = image('Sets/Beach Day/More/b.png', 'b')
     const folder = library.getFolderByPath(path.join(index, 'Sets', 'Beach Day'))!
-    expect(discord.enqueueFolder(folder.id)).toEqual({ queued: 2, unknown: 0 })
+    expect(await discord.enqueueFolder(folder.id)).toEqual({ queued: 2, unknown: 0, alreadyPosted: 0 })
     const queue = discord.getQueue()
     expect(queue.map((q) => q.id).sort()).toEqual([first, second].sort())
     expect(queue.flatMap((q) => q.targets.map((t) => t.name))).toEqual(['Beach Day', 'Beach Day'])

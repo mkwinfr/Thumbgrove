@@ -9,6 +9,7 @@ import { CataloguesView } from './features/catalogues/CataloguesView'
 import { CharactersView } from './features/characters/CharactersView'
 import { DiscordView } from './features/discord/DiscordView'
 import { FoldersView } from './features/folders/FoldersView'
+import { AlreadyPostedDialog } from './features/discord/AlreadyPostedDialog'
 import { AutoApprovedDialog } from './features/review/AutoApprovedDialog'
 import { CharacterNameDialog } from './features/review/CharacterNameDialog'
 import { ReviewView } from './features/review/ReviewView'
@@ -52,6 +53,7 @@ export function App() {
       <ModelDialog />
       <CharacterNameDialog />
       <AutoApprovedDialog />
+      <AlreadyPostedDialog />
     </div>
   )
 }

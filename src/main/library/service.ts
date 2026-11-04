@@ -958,7 +958,9 @@ export class LibraryService {
   applyReviews(requests: ApplyRequest[]): Promise<ApplyOutcome> {
     return this.serialize(async () => {
       const { results, undo } = await this.placeReviews(requests, true)
-      return { results, undoToken: undo.length ? this.remember(combineUndo(undo)) : null }
+      const queued = undo.filter(({ request }) => request.queueForDiscord).flatMap(({ entry }) => entry.queued)
+      const alreadyPosted = queued.length ? await this.discord.removeAlreadyQueuedPosted(queued) : 0
+      return { results, undoToken: undo.length ? this.remember(combineUndo(undo)) : null, alreadyPosted }
     })
   }
 

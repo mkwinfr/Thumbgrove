@@ -58,6 +58,8 @@ interface AppState {
   discordQueued: number
   autoApproved: number
   autoApprovedOpen: boolean
+  /** Images that were asked to be queued but are already on Discord. */
+  alreadyPosted: { count: number; queued: number } | null
   recognition: RecognitionStatus | null
 
   setView(view: ViewName): void
@@ -66,6 +68,7 @@ interface AppState {
   openSettings(section: SettingsSection): void
   setModelDialogOpen(open: boolean): void
   setAutoApprovedOpen(open: boolean): void
+  setAlreadyPosted(notice: { count: number; queued: number } | null): void
   updateSettings(change: SettingsChange): Promise<void>
   setReviewFilter(filter: ReviewFilter): void
   hydrateSettings(settings: Settings): void
@@ -309,6 +312,7 @@ export const useAppStore = create<AppState>((set, get) => {
     discordQueued: 0,
     autoApproved: 0,
     autoApprovedOpen: false,
+    alreadyPosted: null,
     recognition: null,
 
     setView: (view) => set({ view }),
@@ -317,6 +321,7 @@ export const useAppStore = create<AppState>((set, get) => {
     openSettings: (settingsSection) => set({ settingsOpen: true, settingsSection }),
     setModelDialogOpen: (modelDialogOpen) => set({ modelDialogOpen }),
     setAutoApprovedOpen: (autoApprovedOpen) => set({ autoApprovedOpen }),
+    setAlreadyPosted: (alreadyPosted) => set({ alreadyPosted }),
     updateSettings: async (change) => {
       // Shown at once, so that sliders follow the pointer. A refused value is put back below.
       const previous = get().settings
@@ -554,7 +559,8 @@ export const useAppStore = create<AppState>((set, get) => {
       }
       await flushDrafts()
       try {
-        const { results, undoToken } = await window.thumbGrove.applyReviews(requests)
+        const { results, undoToken, alreadyPosted } = await window.thumbGrove.applyReviews(requests)
+        if (alreadyPosted) set({ alreadyPosted: { count: alreadyPosted, queued: requests.length - alreadyPosted } })
         const applied = results.filter((r) => r.ok)
         const failed = results.filter((r) => !r.ok)
         const action = undoToken !== null ? rememberUndo(undoToken) : undefined

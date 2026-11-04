@@ -8,6 +8,7 @@ import type {
   DiscordConfig,
   DiscordLink,
   DiscordStatus,
+  EnqueueResult,
   HistoryEntry,
   LibraryEvent,
   QueueEntry,
@@ -80,6 +81,7 @@ export class DiscordService {
     this.reviews = options.reviews
     this.fetcher = options.fetcher ?? fetch
     this.client = new DiscordClient(() => this.token, options.fetcher, options.apiBase, options.sleep)
+    this.removeFinished()
   }
 
   private get db() {
@@ -167,6 +169,7 @@ export class DiscordService {
          ON CONFLICT(kind, name_key) DO UPDATE SET name = excluded.name, thread_id = excluded.thread_id, thread_name = excluded.thread_name`
       )
       .run(kind, nameKey(clean), clean, threadId, threadName)
+    this.removeFinished()
     this.emit()
   }
 
@@ -302,6 +305,28 @@ export class DiscordService {
       }
       return { id: row.id, name: row.name, mtimeMs: row.mtime_ms, size: row.size, tooLarge: row.size > limit, targets, missing, lastError: row.last_error }
     })
+  }
+
+  /** Images already in all their threads have nothing left to post, so they don't stay queued. */
+  private removeFinished(): number[] {
+    const finished = this.getQueue()
+      .filter((entry) => !entry.missing.length && entry.targets.length && entry.targets.every((target) => target.posted))
+      .map((entry) => entry.id)
+    this.reviews.dequeueDiscord(finished)
+    return finished
+  }
+
+  /** Takes out the newly queued images that are already on Discord, and returns how many there were. */
+  async removeAlreadyQueuedPosted(ids: number[]): Promise<number> {
+    for (const id of ids) {
+      const file = this.library.imageFile(id)
+      // An image that can't be read stays queued. Uploading reports the problem.
+      if (file) await this.fileHash(id, file.path).catch(() => undefined)
+    }
+    const wanted = new Set(ids)
+    const count = this.removeFinished().filter((id) => wanted.has(id)).length
+    this.emit()
+    return count
   }
 
   /** Takes images out of the queue and returns them, so the removal can be undone. */
@@ -469,7 +494,7 @@ export class DiscordService {
    * Queues images chosen while browsing. The destination comes from where the file lives: inside a
    * character folder it's that character, and inside a set folder it's that set.
    */
-  enqueueFromFolders(ids: number[]): { queued: number; unknown: number } {
+  async enqueueFromFolders(ids: number[]): Promise<EnqueueResult> {
     const settings = this.library.getSettings()
     const childOf = (root: string, file: string): string | null => {
       const prefix = `${pathKey(root)}\\`
@@ -478,7 +503,7 @@ export class DiscordService {
       const parts = path.resolve(file).slice(prefix.length).split(path.sep)
       return parts.length >= 2 ? parts[0]! : null
     }
-    let queued = 0
+    const queued: number[] = []
     let unknown = 0
     for (const id of ids) {
       const file = this.library.imageFile(id)
@@ -490,14 +515,14 @@ export class DiscordService {
         continue
       }
       this.reviews.enqueueDiscord(id, character ? [character] : [], set)
-      queued++
+      queued.push(id)
     }
-    this.emit()
-    return { queued, unknown }
+    const alreadyPosted = await this.removeAlreadyQueuedPosted(queued)
+    return { queued: queued.length - alreadyPosted, unknown, alreadyPosted }
   }
 
   /** Queues every image in a character or set folder, including its subfolders. */
-  enqueueFolder(folderId: number): { queued: number; unknown: number } {
+  enqueueFolder(folderId: number): Promise<EnqueueResult> {
     return this.enqueueFromFolders(this.library.imageIdsInFolder(folderId))
   }
 
